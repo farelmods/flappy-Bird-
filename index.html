@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flappy Bird - Easy Mode</title>
+    <title>Flappy Bird & Dragon - Easy Mode</title>
     <style>
         * {
             margin: 0;
@@ -83,6 +83,53 @@
             opacity: 0.9;
         }
 
+        .character-selection {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .character-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+        }
+
+        .character-option:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-5px);
+        }
+
+        .character-option.selected {
+            border: 3px solid #FFD700;
+            background: rgba(255, 215, 0, 0.2);
+        }
+
+        .character-preview {
+            width: 60px;
+            height: 40px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .character-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .character-stats {
+            font-size: 12px;
+            opacity: 0.8;
+            text-align: center;
+        }
+
         .btn {
             background: #FFD700;
             color: #333;
@@ -105,6 +152,11 @@
             transform: translateY(0);
         }
 
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
         .hidden {
             opacity: 0;
             pointer-events: none;
@@ -116,6 +168,17 @@
             left: 50%;
             transform: translateX(-50%);
             font-size: 20px;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+            pointer-events: none;
+        }
+
+        .current-character {
+            position: absolute;
+            top: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 16px;
             color: white;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
             pointer-events: none;
@@ -140,18 +203,33 @@
         <div class="game-ui">
             <div class="score" id="score">0</div>
             <div class="best-score" id="bestScore">Best: 0</div>
+            <div class="current-character" id="currentCharacter"></div>
             
             <div class="start-screen" id="startScreen">
-                <h1>Flappy Bird</h1>
-                <p>Easy Mode - Weak Gravity</p>
-                <button class="btn" onclick="startGame()">Start Game</button>
-                <div class="instructions">Press SPACE or Click to Flap</div>
+                <h1>Flappy Bird & Dragon</h1>
+                <p>Easy Mode - Choose Your Character</p>
+                
+                <div class="character-selection">
+                    <div class="character-option selected" id="birdOption" onclick="selectCharacter('bird')">
+                        <div class="character-preview" id="birdPreview"></div>
+                        <div class="character-name">Burung</div>
+                        <div class="character-stats">Gravitasi: Normal<br>Kecepatan: Standar</div>
+                    </div>
+                    <div class="character-option" id="dragonOption" onclick="selectCharacter('dragon')">
+                        <div class="character-preview" id="dragonPreview"></div>
+                        <div class="character-name">Naga</div>
+                        <div class="character-stats">Gravitasi: Lambat<br>Terbang: Mudah</div>
+                    </div>
+                </div>
+                
+                <button class="btn" onclick="startGame()">Mulai Game</button>
+                <div class="instructions">Tekan SPACE atau Klik untuk Terbang</div>
             </div>
             
             <div class="game-over-screen hidden" id="gameOverScreen">
                 <h1>Game Over</h1>
                 <p id="finalScore">Score: 0</p>
-                <button class="btn" onclick="restartGame()">Play Again</button>
+                <button class="btn" onclick="restartGame()">Main Lagi</button>
             </div>
         </div>
     </div>
@@ -161,27 +239,205 @@
         const ctx = canvas.getContext('2d');
         const scoreElement = document.getElementById('score');
         const bestScoreElement = document.getElementById('bestScore');
+        const currentCharacterElement = document.getElementById('currentCharacter');
         const startScreen = document.getElementById('startScreen');
         const gameOverScreen = document.getElementById('gameOverScreen');
         const finalScoreElement = document.getElementById('finalScore');
+        const birdOption = document.getElementById('birdOption');
+        const dragonOption = document.getElementById('dragonOption');
+        const birdPreview = document.getElementById('birdPreview');
+        const dragonPreview = document.getElementById('dragonPreview');
 
         // Game variables
         let gameState = 'start'; // 'start', 'playing', 'gameOver'
         let score = 0;
         let bestScore = localStorage.getItem('flappyBestScore') || 0;
+        let selectedCharacter = localStorage.getItem('selectedCharacter') || 'bird';
         bestScoreElement.textContent = `Best: ${bestScore}`;
 
-        // Bird properties
-        const bird = {
+        // Character properties
+        const characters = {
+            bird: {
+                name: 'Burung',
+                gravity: 0.2,
+                jumpPower: -4.5,
+                colors: {
+                    body: '#FFD700',
+                    wing: '#FFA500',
+                    eye: 'white',
+                    pupil: 'black',
+                    beak: '#FF6347'
+                }
+            },
+            dragon: {
+                name: 'Naga',
+                gravity: 0.15, // Slower gravity as requested
+                jumpPower: -4.5,
+                colors: {
+                    body: '#DC143C',
+                    wing: '#B22222',
+                    eye: '#FFD700',
+                    pupil: 'black',
+                    beak: '#8B0000'
+                }
+            }
+        };
+
+        // Player properties
+        const player = {
             x: 80,
             y: canvas.height / 2,
             width: 34,
             height: 24,
             velocity: 0,
-            gravity: 0.2, // Weak gravity for easier gameplay
-            jumpPower: -4.5,
-            rotation: 0
+            gravity: characters[selectedCharacter].gravity,
+            jumpPower: characters[selectedCharacter].jumpPower,
+            rotation: 0,
+            character: selectedCharacter
         };
+
+        // Update character display
+        function updateCharacterDisplay() {
+            currentCharacterElement.textContent = `Karakter: ${characters[selectedCharacter].name}`;
+            
+            // Update selection UI
+            birdOption.classList.toggle('selected', selectedCharacter === 'bird');
+            dragonOption.classList.toggle('selected', selectedCharacter === 'dragon');
+        }
+
+        // Character selection
+        function selectCharacter(character) {
+            selectedCharacter = character;
+            player.character = character;
+            player.gravity = characters[character].gravity;
+            player.jumpPower = characters[character].jumpPower;
+            localStorage.setItem('selectedCharacter', character);
+            updateCharacterDisplay();
+            drawCharacterPreviews();
+        }
+
+        // Draw character previews
+        function drawCharacterPreviews() {
+            // Clear previews
+            birdPreview.innerHTML = '';
+            dragonPreview.innerHTML = '';
+
+            // Create mini canvases for previews
+            const birdCanvas = document.createElement('canvas');
+            const dragonCanvas = document.createElement('canvas');
+            birdCanvas.width = dragonCanvas.width = 60;
+            birdCanvas.height = dragonCanvas.height = 40;
+
+            const birdCtx = birdCanvas.getContext('2d');
+            const dragonCtx = dragonCanvas.getContext('2d');
+
+            // Draw bird preview
+            drawCharacterPreview(birdCtx, 'bird', 30, 20, 0.6);
+            birdPreview.appendChild(birdCanvas);
+
+            // Draw dragon preview
+            drawCharacterPreview(dragonCtx, 'dragon', 30, 20, 0.6);
+            dragonPreview.appendChild(dragonCanvas);
+        }
+
+        function drawCharacterPreview(ctx, character, x, y, scale) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+
+            const colors = characters[character].colors;
+
+            if (character === 'bird') {
+                // Bird body
+                ctx.fillStyle = colors.body;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 17, 12, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Bird eye
+                ctx.fillStyle = colors.eye;
+                ctx.beginPath();
+                ctx.arc(8, -5, 6, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = colors.pupil;
+                ctx.beginPath();
+                ctx.arc(10, -5, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Bird beak
+                ctx.fillStyle = colors.beak;
+                ctx.beginPath();
+                ctx.moveTo(15, 0);
+                ctx.lineTo(25, 0);
+                ctx.lineTo(15, 5);
+                ctx.closePath();
+                ctx.fill();
+
+                // Bird wing
+                ctx.fillStyle = colors.wing;
+                ctx.beginPath();
+                ctx.ellipse(-5, 5, 12, 8, -20 * Math.PI / 180, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (character === 'dragon') {
+                // Dragon body
+                ctx.fillStyle = colors.body;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 17, 12, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Dragon scales pattern
+                ctx.fillStyle = colors.wing;
+                for (let i = -10; i < 15; i += 8) {
+                    for (let j = -8; j < 8; j += 6) {
+                        ctx.beginPath();
+                        ctx.arc(i, j, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                // Dragon eye (golden)
+                ctx.fillStyle = colors.eye;
+                ctx.beginPath();
+                ctx.arc(8, -5, 6, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = colors.pupil;
+                ctx.beginPath();
+                ctx.ellipse(10, -5, 1, 3, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Dragon snout
+                ctx.fillStyle = colors.beak;
+                ctx.beginPath();
+                ctx.moveTo(15, -2);
+                ctx.lineTo(25, 0);
+                ctx.lineTo(15, 7);
+                ctx.closePath();
+                ctx.fill();
+
+                // Dragon wing (more angular)
+                ctx.fillStyle = colors.wing;
+                ctx.beginPath();
+                ctx.moveTo(-15, 0);
+                ctx.lineTo(-5, -8);
+                ctx.lineTo(5, -5);
+                ctx.lineTo(0, 10);
+                ctx.lineTo(-10, 8);
+                ctx.closePath();
+                ctx.fill();
+
+                // Dragon tail
+                ctx.strokeStyle = colors.body;
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(-17, 0);
+                ctx.quadraticCurveTo(-25, -5, -30, 0);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
 
         // Pipe properties
         const pipes = [];
@@ -219,7 +475,7 @@
         });
 
         function flap() {
-            bird.velocity = bird.jumpPower;
+            player.velocity = player.jumpPower;
         }
 
         function startGame() {
@@ -237,29 +493,32 @@
         }
 
         function resetGame() {
-            bird.y = canvas.height / 2;
-            bird.velocity = 0;
-            bird.rotation = 0;
+            player.y = canvas.height / 2;
+            player.velocity = 0;
+            player.rotation = 0;
+            player.character = selectedCharacter;
+            player.gravity = characters[selectedCharacter].gravity;
+            player.jumpPower = characters[selectedCharacter].jumpPower;
             pipes.length = 0;
             pipeTimer = 0;
             score = 0;
             scoreElement.textContent = score;
         }
 
-        function updateBird() {
-            bird.velocity += bird.gravity;
-            bird.y += bird.velocity;
+        function updatePlayer() {
+            player.velocity += player.gravity;
+            player.y += player.velocity;
 
             // Update rotation based on velocity
-            bird.rotation = Math.min(Math.max(bird.velocity * 3, -30), 90);
+            player.rotation = Math.min(Math.max(player.velocity * 3, -30), 90);
 
             // Check boundaries
-            if (bird.y + bird.height > canvas.height - 50) {
+            if (player.y + player.height > canvas.height - 50) {
                 gameOver();
             }
-            if (bird.y < 0) {
-                bird.y = 0;
-                bird.velocity = 0;
+            if (player.y < 0) {
+                player.y = 0;
+                player.velocity = 0;
             }
         }
 
@@ -284,8 +543,8 @@
             for (let i = pipes.length - 1; i >= 0; i--) {
                 pipes[i].x -= pipeSpeed;
 
-                // Check if bird passed the pipe
-                if (!pipes[i].passed && pipes[i].x + pipeWidth < bird.x) {
+                // Check if player passed the pipe
+                if (!pipes[i].passed && pipes[i].x + pipeWidth < player.x) {
                     pipes[i].passed = true;
                     score++;
                     scoreElement.textContent = score;
@@ -301,17 +560,17 @@
         function checkCollisions() {
             for (const pipe of pipes) {
                 // Check collision with top pipe
-                if (bird.x + bird.width > pipe.x && 
-                    bird.x < pipe.x + pipeWidth &&
-                    bird.y < pipe.topHeight) {
+                if (player.x + player.width > pipe.x && 
+                    player.x < pipe.x + pipeWidth &&
+                    player.y < pipe.topHeight) {
                     gameOver();
                     return;
                 }
 
                 // Check collision with bottom pipe
-                if (bird.x + bird.width > pipe.x && 
-                    bird.x < pipe.x + pipeWidth &&
-                    bird.y + bird.height > pipe.bottomY) {
+                if (player.x + player.width > pipe.x && 
+                    player.x < pipe.x + pipeWidth &&
+                    player.y + player.height > pipe.bottomY) {
                     gameOver();
                     return;
                 }
@@ -356,30 +615,42 @@
             }
         }
 
-        function drawBird() {
+        function drawPlayer() {
             ctx.save();
-            ctx.translate(bird.x + bird.width / 2, bird.y + bird.height / 2);
-            ctx.rotate(bird.rotation * Math.PI / 180);
+            ctx.translate(player.x + player.width / 2, player.y + player.height / 2);
+            ctx.rotate(player.rotation * Math.PI / 180);
 
+            const colors = characters[player.character].colors;
+
+            if (player.character === 'bird') {
+                drawBird(colors);
+            } else if (player.character === 'dragon') {
+                drawDragon(colors);
+            }
+
+            ctx.restore();
+        }
+
+        function drawBird(colors) {
             // Bird body
-            ctx.fillStyle = '#FFD700';
+            ctx.fillStyle = colors.body;
             ctx.beginPath();
-            ctx.ellipse(0, 0, bird.width / 2, bird.height / 2, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, 0, player.width / 2, player.height / 2, 0, 0, Math.PI * 2);
             ctx.fill();
 
             // Bird eye
-            ctx.fillStyle = 'white';
+            ctx.fillStyle = colors.eye;
             ctx.beginPath();
             ctx.arc(8, -5, 6, 0, Math.PI * 2);
             ctx.fill();
 
-            ctx.fillStyle = 'black';
+            ctx.fillStyle = colors.pupil;
             ctx.beginPath();
             ctx.arc(10, -5, 3, 0, Math.PI * 2);
             ctx.fill();
 
             // Bird beak
-            ctx.fillStyle = '#FF6347';
+            ctx.fillStyle = colors.beak;
             ctx.beginPath();
             ctx.moveTo(15, 0);
             ctx.lineTo(25, 0);
@@ -388,12 +659,78 @@
             ctx.fill();
 
             // Bird wing
-            ctx.fillStyle = '#FFA500';
+            ctx.fillStyle = colors.wing;
             ctx.beginPath();
             ctx.ellipse(-5, 5, 12, 8, -20 * Math.PI / 180, 0, Math.PI * 2);
             ctx.fill();
+        }
 
-            ctx.restore();
+        function drawDragon(colors) {
+            // Dragon body
+            ctx.fillStyle = colors.body;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, player.width / 2, player.height / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Dragon scales pattern
+            ctx.fillStyle = colors.wing;
+            for (let i = -10; i < 15; i += 6) {
+                for (let j = -8; j < 8; j += 5) {
+                    ctx.beginPath();
+                    ctx.arc(i, j, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            // Dragon eye (golden)
+            ctx.fillStyle = colors.eye;
+            ctx.beginPath();
+            ctx.arc(8, -5, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Dragon pupil (slit-like)
+            ctx.fillStyle = colors.pupil;
+            ctx.beginPath();
+            ctx.ellipse(10, -5, 1, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Dragon snout (more pointed)
+            ctx.fillStyle = colors.beak;
+            ctx.beginPath();
+            ctx.moveTo(15, -2);
+            ctx.lineTo(25, 0);
+            ctx.lineTo(15, 7);
+            ctx.closePath();
+            ctx.fill();
+
+            // Dragon wing (more angular)
+            ctx.fillStyle = colors.wing;
+            ctx.beginPath();
+            ctx.moveTo(-15, 0);
+            ctx.lineTo(-5, -10);
+            ctx.lineTo(5, -8);
+            ctx.lineTo(0, 12);
+            ctx.lineTo(-12, 10);
+            ctx.closePath();
+            ctx.fill();
+
+            // Dragon tail
+            ctx.strokeStyle = colors.body;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(-17, 0);
+            ctx.quadraticCurveTo(-25, -8, -30, 0);
+            ctx.stroke();
+
+            // Dragon horns
+            ctx.strokeStyle = colors.beak;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(5, -12);
+            ctx.lineTo(7, -18);
+            ctx.moveTo(10, -12);
+            ctx.lineTo(12, -18);
+            ctx.stroke();
         }
 
         function drawPipes() {
@@ -439,11 +776,11 @@
             // Draw everything
             drawBackground();
             drawPipes();
-            drawBird();
+            drawPlayer();
             drawGround();
 
             // Update game state
-            updateBird();
+            updatePlayer();
             updatePipes();
             checkCollisions();
 
@@ -451,7 +788,9 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // Initial draw
+        // Initialize
+        updateCharacterDisplay();
+        drawCharacterPreviews();
         drawBackground();
         drawGround();
     </script>
