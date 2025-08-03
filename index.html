@@ -346,6 +346,14 @@
             dragonOption.classList.toggle('selected', selectedCharacter === 'dragon');
         }
 
+        // Update time of day based on score
+        function updateTimeOfDay() {
+            const timeIndex = Math.floor(score / 10) % 4;
+            const times = ['day', 'afternoon', 'night', 'morning'];
+            currentTimeOfDay = times[timeIndex];
+            timeOfDayElement.textContent = timeOfDayConfig[currentTimeOfDay].name;
+        }
+
         // Character selection
         function selectCharacter(character) {
             selectedCharacter = character;
