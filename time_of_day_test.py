@@ -57,7 +57,7 @@ class TimeOfDayFeatureTester:
         # Check for all four time periods
         time_periods = ['day', 'afternoon', 'night', 'morning']
         for period in time_periods:
-            if f"'{period}':" not in self.html_content and f'"{period}":' not in self.html_content:
+            if f"{period}:" not in self.html_content:
                 print(f"❌ Time period '{period}' not found in config")
                 return False
         
