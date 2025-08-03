@@ -641,15 +641,21 @@
         }
 
         function drawBackground() {
-            // Sky gradient
+            // Dynamic sky gradient based on time of day
+            const config = timeOfDayConfig[currentTimeOfDay];
             const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, '#87CEEB');
-            gradient.addColorStop(1, '#98D8E8');
+            gradient.addColorStop(0, config.skyGradient[0]);
+            gradient.addColorStop(1, config.skyGradient[1]);
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw clouds
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            // Draw stars for night time
+            if (currentTimeOfDay === 'night') {
+                drawStars();
+            }
+
+            // Draw clouds with time-appropriate colors
+            ctx.fillStyle = config.cloudColor;
             for (const cloud of clouds) {
                 // Update cloud position
                 cloud.x -= cloud.speed;
@@ -665,6 +671,31 @@
                 ctx.arc(cloud.x + cloud.width * 2/3, cloud.y, cloud.width / 3, 0, Math.PI * 2);
                 ctx.fill();
             }
+        }
+
+        function drawStars() {
+            // Generate stars for night sky
+            ctx.fillStyle = 'white';
+            const starPositions = [
+                {x: 50, y: 50}, {x: 150, y: 80}, {x: 250, y: 60}, {x: 350, y: 90},
+                {x: 100, y: 120}, {x: 300, y: 130}, {x: 200, y: 160}, {x: 80, y: 180},
+                {x: 320, y: 200}, {x: 180, y: 40}, {x: 370, y: 150}
+            ];
+            
+            starPositions.forEach(star => {
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Add twinkling effect
+                if (Math.random() > 0.7) {
+                    ctx.beginPath();
+                    ctx.arc(star.x, star.y, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.fill();
+                    ctx.fillStyle = 'white';
+                }
+            });
         }
 
         function drawPlayer() {
