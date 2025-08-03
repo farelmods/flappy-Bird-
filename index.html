@@ -269,7 +269,32 @@
         let score = 0;
         let bestScore = localStorage.getItem('flappyBestScore') || 0;
         let selectedCharacter = localStorage.getItem('selectedCharacter') || 'bird';
+        let currentTimeOfDay = 'day'; // 'day', 'afternoon', 'night', 'morning'
         bestScoreElement.textContent = `Best: ${bestScore}`;
+
+        // Time of day configuration
+        const timeOfDayConfig = {
+            day: {
+                name: '🌞 Siang',
+                skyGradient: ['#87CEEB', '#98D8E8'],
+                cloudColor: 'rgba(255, 255, 255, 0.8)'
+            },
+            afternoon: {
+                name: '🌅 Sore',
+                skyGradient: ['#FF6B35', '#F7931E'],
+                cloudColor: 'rgba(255, 182, 193, 0.9)'
+            },
+            night: {
+                name: '🌙 Malam',
+                skyGradient: ['#191970', '#000080'],
+                cloudColor: 'rgba(220, 220, 220, 0.6)'
+            },
+            morning: {
+                name: '🌅 Pagi',
+                skyGradient: ['#FFB6C1', '#FFA07A'],
+                cloudColor: 'rgba(255, 255, 255, 0.7)'
+            }
+        };
 
         // Character properties
         const characters = {
