@@ -599,6 +599,7 @@
                     pipes[i].passed = true;
                     score++;
                     scoreElement.textContent = score;
+                    updateTimeOfDay(); // Update time of day when score changes
                 }
 
                 // Remove off-screen pipes
