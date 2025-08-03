@@ -551,7 +551,9 @@
             pipes.length = 0;
             pipeTimer = 0;
             score = 0;
+            currentTimeOfDay = 'day';
             scoreElement.textContent = score;
+            timeOfDayElement.textContent = timeOfDayConfig.day.name;
         }
 
         function updatePlayer() {
