@@ -1,882 +1,961 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flappy Bird & Dragon - Easy Mode</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Flappy Bird Adventure</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Roboto:wght@400;700&display=swap');
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(to bottom, #87CEEB 0%, #98D8E8 100%);
+            font-family: 'Roboto', sans-serif;
+            background: #2c3e50;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            overflow: hidden;
         }
 
-        .game-container {
+        #game-container {
             position: relative;
-            background: #70c5ce;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            height: 100%;
+            max-width: 480px; /* Mobile aspect ratio constraint */
+            background: #000;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
             overflow: hidden;
         }
 
         canvas {
             display: block;
-            cursor: pointer;
+            width: 100%;
+            height: 100%;
         }
 
-        .game-ui {
+        /* UI Overlays */
+        .ui-screen {
             position: absolute;
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 0;
-            pointer-events: none;
-        }
-
-        .score {
-            position: absolute;
-            top: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 48px;
-            font-weight: bold;
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-            pointer-events: none;
-        }
-
-        .start-screen, .game-over-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
+            width: 100%;
+            height: 100%;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            color: white;
-            pointer-events: all;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 10;
             transition: opacity 0.3s ease;
-        }
-
-        .start-screen h1, .game-over-screen h1 {
-            font-size: 48px;
-            margin-bottom: 20px;
-            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
-        }
-
-        .start-screen p, .game-over-screen p {
-            font-size: 20px;
-            margin-bottom: 30px;
-            opacity: 0.9;
-        }
-
-        .character-selection {
-            display: flex;
-            gap: 30px;
-            margin-bottom: 30px;
-        }
-
-        .character-option {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
             padding: 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: 3px solid transparent;
-        }
-
-        .character-option:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-5px);
-        }
-
-        .character-option.selected {
-            border: 3px solid #FFD700;
-            background: rgba(255, 215, 0, 0.2);
-        }
-
-        .character-preview {
-            width: 60px;
-            height: 40px;
-            margin-bottom: 10px;
-            position: relative;
-        }
-
-        .character-name {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .character-stats {
-            font-size: 12px;
-            opacity: 0.8;
             text-align: center;
-        }
-
-        .btn {
-            background: #FFD700;
-            color: #333;
-            border: none;
-            padding: 15px 40px;
-            font-size: 24px;
-            font-weight: bold;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.6);
-        }
-
-        .btn:active {
-            transform: translateY(0);
-        }
-
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
         }
 
         .hidden {
             opacity: 0;
             pointer-events: none;
+            z-index: -1;
         }
 
-        .best-score {
-            position: absolute;
-            top: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 20px;
-            color: white;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
-            pointer-events: none;
+        /* Typography */
+        h1 {
+            font-family: 'Fredoka One', cursive;
+            color: #FFD700;
+            font-size: 3rem;
+            text-shadow: 4px 4px 0 #d35400, 6px 6px 0 #2c3e50;
+            margin-bottom: 2rem;
+            letter-spacing: 2px;
+            animation: float 3s ease-in-out infinite;
         }
 
-        .current-character {
-            position: absolute;
-            top: 120px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 16px;
-            color: white;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
-            pointer-events: none;
+        h2 {
+            font-family: 'Fredoka One', cursive;
+            color: #fff;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 0 #333;
         }
 
-        .time-of-day {
+        p {
+            color: #ecf0f1;
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+        }
+
+        /* Forms */
+        .input-group {
+            margin-bottom: 1.5rem;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        input {
+            width: 100%;
+            padding: 15px;
+            border-radius: 50px;
+            border: 2px solid #FFD700;
+            background: rgba(255, 255, 255, 0.9);
+            font-size: 1.2rem;
+            text-align: center;
+            font-family: 'Fredoka One', cursive;
+            outline: none;
+            transition: transform 0.2s;
+        }
+
+        input:focus {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        }
+
+        /* Buttons */
+        .btn {
+            background: linear-gradient(to bottom, #f1c40f, #f39c12);
+            border: none;
+            border-radius: 50px;
+            padding: 15px 40px;
+            color: #fff;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.5rem;
+            cursor: pointer;
+            text-shadow: 1px 1px 0 rgba(0,0,0,0.2);
+            box-shadow: 0 5px 0 #d35400, 0 10px 10px rgba(0,0,0,0.2);
+            transition: all 0.1s;
+            margin: 10px;
+            min-width: 200px;
+        }
+
+        .btn:active {
+            transform: translateY(5px);
+            box-shadow: 0 0 0 #d35400, 0 0px 0 rgba(0,0,0,0.2);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(to bottom, #3498db, #2980b9);
+            box-shadow: 0 5px 0 #1c5980, 0 10px 10px rgba(0,0,0,0.2);
+            font-size: 1.2rem;
+            padding: 12px 30px;
+        }
+
+        .btn-secondary:active {
+            box-shadow: 0 0 0 #1c5980;
+        }
+
+        .btn-close {
             position: absolute;
-            top: 150px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 14px;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e74c3c;
             color: white;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        /* HUD */
+        .hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px;
             pointer-events: none;
-            background: rgba(0, 0, 0, 0.2);
+            display: flex;
+            justify-content: space-between;
+            z-index: 5;
+        }
+
+        .score-container {
+            font-family: 'Fredoka One', cursive;
+            color: white;
+            text-shadow: 2px 2px 0 #000;
+            font-size: 2rem;
+        }
+
+        .coin-display {
+            display: flex;
+            align-items: center;
+            background: rgba(0,0,0,0.5);
             padding: 5px 15px;
-            border-radius: 15px;
+            border-radius: 20px;
+            color: #FFD700;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.2rem;
         }
 
-        .instructions {
-            position: absolute;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 16px;
-            color: white;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
-            pointer-events: none;
+        .coin-icon {
+            width: 20px;
+            height: 20px;
+            background: #FFD700;
+            border-radius: 50%;
+            margin-right: 8px;
+            border: 2px solid #f39c12;
+            box-shadow: inset -2px -2px 0 #f39c12;
+            display: inline-block;
         }
+
+        /* Shop Grid */
+        .shop-container {
+            width: 100%;
+            height: 70%;
+            overflow-y: auto;
+            padding: 10px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .shop-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .shop-item.active {
+            border-color: #FFD700;
+            background: rgba(255, 215, 0, 0.2);
+        }
+
+        .shop-item:hover {
+            transform: scale(1.02);
+        }
+
+        .item-preview {
+            width: 50px;
+            height: 50px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .item-name {
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+
+        .item-cost {
+            color: #FFD700;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .locked-overlay {
+            opacity: 0.5;
+            filter: grayscale(1);
+        }
+
+        /* Upgrade Section in Shop */
+        .upgrade-section {
+            width: 100%;
+            margin-top: 20px;
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+        }
+
+        .upgrade-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            color: white;
+        }
+
+        /* Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
     </style>
 </head>
 <body>
-    <div class="game-container">
-        <canvas id="gameCanvas" width="400" height="600"></canvas>
-        
-        <div class="game-ui">
-            <div class="score" id="score">0</div>
-            <div class="best-score" id="bestScore">Best: 0</div>
-            <div class="current-character" id="currentCharacter"></div>
-            <div class="time-of-day" id="timeOfDay">🌅 Pagi</div>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- HUD -->
+        <div class="hud" id="game-hud" style="display: none;">
+            <div class="score-container" id="current-score">0</div>
+            <div class="coin-display">
+                <div class="coin-icon"></div>
+                <span id="current-coins">0</span>
+            </div>
+        </div>
+
+        <!-- Login Screen -->
+        <div id="login-screen" class="ui-screen">
+            <h1>Flappy Adventure</h1>
+            <div class="input-group">
+                <input type="text" id="username-input" placeholder="Masukkan Username" maxlength="10">
+            </div>
+            <button class="btn" onclick="Game.login()">MAIN</button>
+            <p style="font-size: 0.8rem; margin-top: 20px; opacity: 0.7;">Progress akan tersimpan otomatis</p>
+        </div>
+
+        <!-- Main Menu -->
+        <div id="menu-screen" class="ui-screen hidden">
+            <h1>Flappy Adventure</h1>
+            <p>Welcome, <span id="player-name" style="color:#FFD700; font-weight:bold;">Player</span></p>
+            <div class="coin-display" style="margin-bottom: 20px; background: rgba(0,0,0,0.3); padding: 10px 20px;">
+                <div class="coin-icon"></div>
+                <span id="menu-coins">0</span>
+            </div>
+            <button class="btn" onclick="Game.start()">START GAME</button>
+            <button class="btn btn-secondary" onclick="UI.showShop()">TOKO & UPGRADE</button>
+            <button class="btn btn-secondary" style="background: #e74c3c; box-shadow: 0 5px 0 #c0392b;" onclick="Game.logout()">LOGOUT</button>
+        </div>
+
+        <!-- Shop Screen -->
+        <div id="shop-screen" class="ui-screen hidden">
+            <div class="btn-close" onclick="UI.showMenu()">✕</div>
+            <h2>Toko Karakter</h2>
+            <div class="coin-display" style="margin-bottom: 10px;">
+                <div class="coin-icon"></div>
+                <span id="shop-coins">0</span>
+            </div>
             
-            <div class="start-screen" id="startScreen">
-                <h1>Flappy Bird & Dragon</h1>
-                <p>Easy Mode - Choose Your Character</p>
-                
-                <div class="character-selection">
-                    <div class="character-option selected" id="birdOption" onclick="selectCharacter('bird')">
-                        <div class="character-preview" id="birdPreview"></div>
-                        <div class="character-name">Burung</div>
-                        <div class="character-stats">Gravitasi: Normal<br>Kecepatan: Standar</div>
-                    </div>
-                    <div class="character-option" id="dragonOption" onclick="selectCharacter('dragon')">
-                        <div class="character-preview" id="dragonPreview"></div>
-                        <div class="character-name">Naga</div>
-                        <div class="character-stats">Gravitasi: Lambat<br>Terbang: Mudah</div>
-                    </div>
+            <div class="shop-container" id="character-list">
+                <!-- Filled by JS -->
+            </div>
+
+            <div class="upgrade-section">
+                <h2>Skill Upgrade</h2>
+                <div class="upgrade-row">
+                    <span>Magnet Koin (Lv. <span id="magnet-level">0</span>)</span>
+                    <button class="btn-secondary" style="font-size: 0.8rem; padding: 5px 10px;" onclick="Shop.upgradeSkill('magnet')">
+                        Upgrade (<span id="magnet-cost">100</span>)
+                    </button>
                 </div>
-                
-                <button class="btn" onclick="startGame()">Mulai Game</button>
-                <div class="instructions">Tekan SPACE atau Klik untuk Terbang</div>
             </div>
-            
-            <div class="game-over-screen hidden" id="gameOverScreen">
-                <h1>Game Over</h1>
-                <p id="finalScore">Score: 0</p>
-                <button class="btn" onclick="restartGame()">Main Lagi</button>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="ui-screen hidden">
+            <h1 style="color: #e74c3c; text-shadow: 4px 4px 0 #fff;">GAME OVER</h1>
+            <div style="background: rgba(0,0,0,0.5); padding: 20px; border-radius: 15px; margin-bottom: 20px; width: 80%;">
+                <p>Score: <span id="final-score" style="color: white; font-weight: bold; font-size: 1.5rem;">0</span></p>
+                <p>High Score: <span id="best-score" style="color: #FFD700;">0</span></p>
+                <p>Coins: +<span id="collected-coins" style="color: #FFD700;">0</span></p>
             </div>
+            <button class="btn" onclick="Game.restart()">COBA LAGI</button>
+            <button class="btn btn-secondary" onclick="UI.showMenu()">MENU</button>
         </div>
     </div>
 
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const scoreElement = document.getElementById('score');
-        const bestScoreElement = document.getElementById('bestScore');
-        const currentCharacterElement = document.getElementById('currentCharacter');
-        const timeOfDayElement = document.getElementById('timeOfDay');
-        const startScreen = document.getElementById('startScreen');
-        const gameOverScreen = document.getElementById('gameOverScreen');
-        const finalScoreElement = document.getElementById('finalScore');
-        const birdOption = document.getElementById('birdOption');
-        const dragonOption = document.getElementById('dragonOption');
-        const birdPreview = document.getElementById('birdPreview');
-        const dragonPreview = document.getElementById('dragonPreview');
+        // --- Game Configuration & Data ---
+        const CHARACTERS = {
+            bird: { name: "Bird", price: 0, color: "#FFD700", type: "bird" },
+            blue: { name: "Blue Bird", price: 100, color: "#3498db", type: "bird" },
+            red: { name: "Red Bird", price: 200, color: "#e74c3c", type: "bird" },
+            green: { name: "Green Bird", price: 300, color: "#2ecc71", type: "bird" },
+            dragon: { name: "Dragon", price: 1000, color: "#8e44ad", type: "dragon" },
+            phoenix: { name: "Phoenix", price: 2000, color: "#e67e22", type: "dragon" }
+        };
 
-        // Game variables
-        let gameState = 'start'; // 'start', 'playing', 'gameOver'
-        let score = 0;
-        let bestScore = localStorage.getItem('flappyBestScore') || 0;
-        let selectedCharacter = localStorage.getItem('selectedCharacter') || 'bird';
-        let currentTimeOfDay = 'day'; // 'day', 'afternoon', 'night', 'morning'
-        bestScoreElement.textContent = `Best: ${bestScore}`;
+        const SKILLS = {
+            magnet: { baseCost: 100, maxLevel: 5 }
+        };
 
-        // Time of day configuration
-        const timeOfDayConfig = {
-            day: {
-                name: '🌞 Siang',
-                skyGradient: ['#87CEEB', '#98D8E8'],
-                cloudColor: 'rgba(255, 255, 255, 0.8)'
+        const User = {
+            username: null,
+            data: null,
+
+            login(username) {
+                if (!username) return alert("Masukkan username!");
+                this.username = username;
+                const saved = localStorage.getItem(`fb_game_${username}`);
+                if (saved) {
+                    this.data = JSON.parse(saved);
+                    // Migration for old data structure if needed
+                    if (!this.data.skills) this.data.skills = { magnet: 0 };
+                } else {
+                    this.data = {
+                        coins: 0,
+                        highScore: 0,
+                        unlocked: ['bird'],
+                        selected: 'bird',
+                        skills: { magnet: 0 }
+                    };
+                }
+                this.save();
+                return true;
             },
-            afternoon: {
-                name: '🌅 Sore',
-                skyGradient: ['#FF6B35', '#F7931E'],
-                cloudColor: 'rgba(255, 182, 193, 0.9)'
+
+            save() {
+                if (this.username) {
+                    localStorage.setItem(`fb_game_${this.username}`, JSON.stringify(this.data));
+                }
             },
-            night: {
-                name: '🌙 Malam',
-                skyGradient: ['#191970', '#000080'],
-                cloudColor: 'rgba(220, 220, 220, 0.6)'
+
+            addCoins(amount) {
+                this.data.coins += amount;
+                this.save();
+                UI.updateCoins();
             },
-            morning: {
-                name: '🌅 Pagi',
-                skyGradient: ['#FFB6C1', '#FFA07A'],
-                cloudColor: 'rgba(255, 255, 255, 0.7)'
+
+            buyCharacter(id) {
+                const char = CHARACTERS[id];
+                if (this.data.coins >= char.price) {
+                    this.data.coins -= char.price;
+                    this.data.unlocked.push(id);
+                    this.selectCharacter(id);
+                    this.save();
+                    return true;
+                }
+                return false;
+            },
+
+            selectCharacter(id) {
+                if (this.data.unlocked.includes(id)) {
+                    this.data.selected = id;
+                    this.save();
+                    return true;
+                }
+                return false;
+            },
+
+            upgradeSkill(skillName) {
+                const skill = SKILLS[skillName];
+                const currentLevel = this.data.skills[skillName] || 0;
+
+                if (currentLevel >= skill.maxLevel) return false;
+
+                const cost = skill.baseCost * (currentLevel + 1);
+
+                if (this.data.coins >= cost) {
+                    this.data.coins -= cost;
+                    this.data.skills[skillName] = currentLevel + 1;
+                    this.save();
+                    return true;
+                }
+                return false;
             }
         };
 
-        // Character properties
-        const characters = {
-            bird: {
-                name: 'Burung',
-                gravity: 0.2,
-                jumpPower: -4.5,
-                colors: {
-                    body: '#FFD700',
-                    wing: '#FFA500',
-                    eye: 'white',
-                    pupil: 'black',
-                    beak: '#FF6347'
-                }
-            },
-            dragon: {
-                name: 'Naga',
-                gravity: 0.15, // Slower gravity as requested
-                jumpPower: -4.5,
-                colors: {
-                    body: '#DC143C',
-                    wing: '#B22222',
-                    eye: '#FFD700',
-                    pupil: 'black',
-                    beak: '#8B0000'
-                }
-            }
-        };
-
-        // Player properties
-        const player = {
-            x: 80,
-            y: canvas.height / 2,
-            width: 34,
-            height: 24,
-            velocity: 0,
-            gravity: characters[selectedCharacter].gravity,
-            jumpPower: characters[selectedCharacter].jumpPower,
-            rotation: 0,
-            character: selectedCharacter
-        };
-
-        // Update character display
-        function updateCharacterDisplay() {
-            currentCharacterElement.textContent = `Karakter: ${characters[selectedCharacter].name}`;
+        // --- UI Manager ---
+        const UI = {
+            screens: ['login-screen', 'menu-screen', 'shop-screen', 'game-over-screen'],
             
-            // Update selection UI
-            birdOption.classList.toggle('selected', selectedCharacter === 'bird');
-            dragonOption.classList.toggle('selected', selectedCharacter === 'dragon');
+            show(screenId) {
+                this.screens.forEach(id => document.getElementById(id).classList.add('hidden'));
+                const el = document.getElementById(screenId);
+                if(el) el.classList.remove('hidden');
+            },
+
+            showMenu() {
+                this.show('menu-screen');
+                document.getElementById('player-name').textContent = User.username;
+                document.getElementById('game-hud').style.display = 'none';
+                this.updateCoins();
+            },
+
+            showShop() {
+                this.show('shop-screen');
+                this.renderShop();
+            },
+
+            updateCoins() {
+                const coins = User.data.coins;
+                document.getElementById('menu-coins').textContent = coins;
+                document.getElementById('shop-coins').textContent = coins;
+                document.getElementById('current-coins').textContent = coins;
+            },
+
+            renderShop() {
+                const list = document.getElementById('character-list');
+                list.innerHTML = '';
+
+                Object.keys(CHARACTERS).forEach(key => {
+                    const char = CHARACTERS[key];
+                    const isUnlocked = User.data.unlocked.includes(key);
+                    const isSelected = User.data.selected === key;
+
+                    const el = document.createElement('div');
+                    el.className = `shop-item ${isSelected ? 'active' : ''} ${!isUnlocked ? 'locked' : ''}`;
+                    el.onclick = () => Shop.handleItemClick(key);
+
+                    // Draw mini canvas for preview
+                    const cvs = document.createElement('canvas');
+                    cvs.width = 50; cvs.height = 50;
+                    cvs.className = 'item-preview';
+                    const ctx = cvs.getContext('2d');
+                    // Simple preview drawing
+                    ctx.translate(25, 25);
+                    ctx.fillStyle = char.color;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 15, 0, Math.PI*2);
+                    ctx.fill();
+
+                    if (!isUnlocked) {
+                        el.classList.add('locked-overlay');
+                    }
+
+                    el.innerHTML = `
+                        ${cvs.outerHTML}
+                        <div class="item-name">${char.name}</div>
+                        <div class="item-cost">${isUnlocked ? (isSelected ? 'EQUIPPED' : 'OWNED') : `🪙 ${char.price}`}</div>
+                    `;
+
+                    list.appendChild(el);
+                });
+
+                // Update Upgrade UI
+                const magLvl = User.data.skills.magnet;
+                document.getElementById('magnet-level').textContent = magLvl >= SKILLS.magnet.maxLevel ? "MAX" : magLvl;
+                const nextCost = SKILLS.magnet.baseCost * (magLvl + 1);
+                const btn = document.getElementById('magnet-cost').parentElement;
+                btn.style.display = magLvl >= SKILLS.magnet.maxLevel ? "none" : "inline-block";
+                document.getElementById('magnet-cost').textContent = nextCost;
+            }
+        };
+
+        // --- Shop Logic ---
+        const Shop = {
+            handleItemClick(id) {
+                if (User.data.unlocked.includes(id)) {
+                    User.selectCharacter(id);
+                } else {
+                    if (confirm(`Buy ${CHARACTERS[id].name} for ${CHARACTERS[id].price} coins?`)) {
+                        if (!User.buyCharacter(id)) {
+                            alert("Not enough coins!");
+                        }
+                    }
+                }
+                UI.renderShop();
+            },
+
+            upgradeSkill(skill) {
+                if (!User.upgradeSkill(skill)) {
+                    alert("Not enough coins or Max Level!");
+                }
+                UI.renderShop();
+                UI.updateCoins();
+            }
+        };
+
+        // --- Game Engine ---
+        const Canvas = document.getElementById('gameCanvas');
+        const Ctx = Canvas.getContext('2d');
+
+        // Handle High DPI
+        function resizeCanvas() {
+            const container = document.getElementById('game-container');
+            const dpr = window.devicePixelRatio || 1;
+            // Set display size (css pixels)
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            Canvas.style.width = width + "px";
+            Canvas.style.height = height + "px";
+
+            // Set actual size in memory (scaled to account for extra pixel density)
+            Canvas.width = width * dpr;
+            Canvas.height = height * dpr;
+
+            // Normalize coordinate system to use css pixels
+            Ctx.scale(dpr, dpr);
+
+            return { width, height };
         }
 
-        // Update time of day based on score
-        function updateTimeOfDay() {
-            const timeIndex = Math.floor(score / 10) % 4;
-            const times = ['day', 'afternoon', 'night', 'morning'];
-            currentTimeOfDay = times[timeIndex];
-            timeOfDayElement.textContent = timeOfDayConfig[currentTimeOfDay].name;
-        }
+        const Game = {
+            state: 'start', // start, playing, gameover
+            width: 0,
+            height: 0,
+            frame: 0,
+            score: 0,
+            coinsCollected: 0,
+            entities: [],
 
-        // Character selection
-        function selectCharacter(character) {
-            selectedCharacter = character;
-            player.character = character;
-            player.gravity = characters[character].gravity;
-            player.jumpPower = characters[character].jumpPower;
-            localStorage.setItem('selectedCharacter', character);
-            updateCharacterDisplay();
-            drawCharacterPreviews();
-        }
+            // Game Loop
+            loopId: null,
 
-        // Draw character previews
-        function drawCharacterPreviews() {
-            // Clear previews
-            birdPreview.innerHTML = '';
-            dragonPreview.innerHTML = '';
+            login() {
+                const username = document.getElementById('username-input').value.trim();
+                if (User.login(username)) {
+                    UI.showMenu();
+                }
+            },
 
-            // Create mini canvases for previews
-            const birdCanvas = document.createElement('canvas');
-            const dragonCanvas = document.createElement('canvas');
-            birdCanvas.width = dragonCanvas.width = 60;
-            birdCanvas.height = dragonCanvas.height = 40;
+            logout() {
+                User.username = null;
+                UI.show('login-screen');
+                document.getElementById('username-input').value = '';
+            },
 
-            const birdCtx = birdCanvas.getContext('2d');
-            const dragonCtx = dragonCanvas.getContext('2d');
+            start() {
+                UI.show('none'); // Hide all menus
+                document.getElementById('game-hud').style.display = 'flex';
+                this.resize();
+                this.reset();
+                this.state = 'playing';
+                this.loop();
+            },
 
-            // Draw bird preview
-            drawCharacterPreview(birdCtx, 'bird', 30, 20, 0.6);
-            birdPreview.appendChild(birdCanvas);
+            restart() {
+                this.start();
+            },
 
-            // Draw dragon preview
-            drawCharacterPreview(dragonCtx, 'dragon', 30, 20, 0.6);
-            dragonPreview.appendChild(dragonCanvas);
-        }
+            resize() {
+                const dim = resizeCanvas();
+                this.width = dim.width;
+                this.height = dim.height;
+            },
 
-        function drawCharacterPreview(ctx, character, x, y, scale) {
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.scale(scale, scale);
+            reset() {
+                this.score = 0;
+                this.coinsCollected = 0;
+                this.frame = 0;
+                document.getElementById('current-score').textContent = 0;
+                document.getElementById('current-coins').textContent = User.data.coins;
 
-            const colors = characters[character].colors;
+                // Initialize Entities
+                this.player = new Player(this.width / 3, this.height / 2);
+                this.pipes = [];
+                this.coins = [];
+                this.bgOffset = 0;
+            },
 
-            if (character === 'bird') {
-                // Bird body
-                ctx.fillStyle = colors.body;
-                ctx.beginPath();
-                ctx.ellipse(0, 0, 17, 12, 0, 0, Math.PI * 2);
-                ctx.fill();
+            loop() {
+                if (this.state !== 'playing') return;
+                
+                this.update();
+                this.draw();
 
-                // Bird eye
-                ctx.fillStyle = colors.eye;
-                ctx.beginPath();
-                ctx.arc(8, -5, 6, 0, Math.PI * 2);
-                ctx.fill();
+                this.loopId = requestAnimationFrame(() => this.loop());
+            },
 
-                ctx.fillStyle = colors.pupil;
-                ctx.beginPath();
-                ctx.arc(10, -5, 3, 0, Math.PI * 2);
-                ctx.fill();
+            stop() {
+                cancelAnimationFrame(this.loopId);
+            },
 
-                // Bird beak
-                ctx.fillStyle = colors.beak;
-                ctx.beginPath();
-                ctx.moveTo(15, 0);
-                ctx.lineTo(25, 0);
-                ctx.lineTo(15, 5);
-                ctx.closePath();
-                ctx.fill();
+            gameOver() {
+                this.state = 'gameover';
 
-                // Bird wing
-                ctx.fillStyle = colors.wing;
-                ctx.beginPath();
-                ctx.ellipse(-5, 5, 12, 8, -20 * Math.PI / 180, 0, Math.PI * 2);
-                ctx.fill();
-            } else if (character === 'dragon') {
-                // Dragon body
-                ctx.fillStyle = colors.body;
-                ctx.beginPath();
-                ctx.ellipse(0, 0, 17, 12, 0, 0, Math.PI * 2);
-                ctx.fill();
+                // Save score
+                if (this.score > User.data.highScore) {
+                    User.data.highScore = this.score;
+                }
+                User.addCoins(this.coinsCollected); // Coins are permanently added
 
-                // Dragon scales pattern
-                ctx.fillStyle = colors.wing;
-                for (let i = -10; i < 15; i += 8) {
-                    for (let j = -8; j < 8; j += 6) {
-                        ctx.beginPath();
-                        ctx.arc(i, j, 2, 0, Math.PI * 2);
-                        ctx.fill();
+                // Update UI
+                document.getElementById('final-score').textContent = this.score;
+                document.getElementById('best-score').textContent = User.data.highScore;
+                document.getElementById('collected-coins').textContent = this.coinsCollected;
+
+                UI.show('game-over-screen');
+            },
+
+            update() {
+                this.frame++;
+                this.player.update();
+
+                // Spawn Pipes
+                if (this.frame % 120 === 0) {
+                    this.pipes.push(new Pipe(this.width));
+
+                    // 50% chance to spawn coin in pipe
+                    if (Math.random() > 0.3) {
+                         const pipe = this.pipes[this.pipes.length-1];
+                         this.coins.push(new Coin(pipe.x + pipe.w/2, pipe.gapY + pipe.gap/2));
                     }
                 }
 
-                // Dragon eye (golden)
-                ctx.fillStyle = colors.eye;
-                ctx.beginPath();
-                ctx.arc(8, -5, 6, 0, Math.PI * 2);
-                ctx.fill();
+                // Update Pipes
+                for (let i = this.pipes.length - 1; i >= 0; i--) {
+                    const pipe = this.pipes[i];
+                    pipe.update();
 
-                ctx.fillStyle = colors.pupil;
-                ctx.beginPath();
-                ctx.ellipse(10, -5, 1, 3, 0, 0, Math.PI * 2);
-                ctx.fill();
+                    if (pipe.offScreen()) {
+                        this.pipes.splice(i, 1);
+                    }
 
-                // Dragon snout
-                ctx.fillStyle = colors.beak;
-                ctx.beginPath();
-                ctx.moveTo(15, -2);
-                ctx.lineTo(25, 0);
-                ctx.lineTo(15, 7);
-                ctx.closePath();
-                ctx.fill();
+                    // Collision
+                    if (pipe.collides(this.player)) {
+                        this.gameOver();
+                    }
 
-                // Dragon wing (more angular)
-                ctx.fillStyle = colors.wing;
-                ctx.beginPath();
-                ctx.moveTo(-15, 0);
-                ctx.lineTo(-5, -8);
-                ctx.lineTo(5, -5);
-                ctx.lineTo(0, 10);
-                ctx.lineTo(-10, 8);
-                ctx.closePath();
-                ctx.fill();
-
-                // Dragon tail
-                ctx.strokeStyle = colors.body;
-                ctx.lineWidth = 4;
-                ctx.beginPath();
-                ctx.moveTo(-17, 0);
-                ctx.quadraticCurveTo(-25, -5, -30, 0);
-                ctx.stroke();
-            }
-
-            ctx.restore();
-        }
-
-        // Pipe properties
-        const pipes = [];
-        const pipeWidth = 60;
-        const pipeGap = 180; // Larger gap for easier gameplay
-        const pipeSpeed = 2;
-        let pipeTimer = 0;
-        const pipeInterval = 120; // Frames between pipes
-
-        // Background elements
-        const clouds = [];
-        for (let i = 0; i < 3; i++) {
-            clouds.push({
-                x: Math.random() * canvas.width,
-                y: Math.random() * 200,
-                width: 60 + Math.random() * 40,
-                speed: 0.5 + Math.random() * 0.5
-            });
-        }
-
-        // Event listeners
-        document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
-                e.preventDefault();
-                if (gameState === 'playing') {
-                    flap();
-                }
-            }
-        });
-
-        canvas.addEventListener('click', () => {
-            if (gameState === 'playing') {
-                flap();
-            }
-        });
-
-        function flap() {
-            player.velocity = player.jumpPower;
-        }
-
-        function startGame() {
-            gameState = 'playing';
-            startScreen.classList.add('hidden');
-            resetGame();
-            gameLoop();
-        }
-
-        function restartGame() {
-            gameState = 'playing';
-            gameOverScreen.classList.add('hidden');
-            resetGame();
-            gameLoop();
-        }
-
-        function resetGame() {
-            player.y = canvas.height / 2;
-            player.velocity = 0;
-            player.rotation = 0;
-            player.character = selectedCharacter;
-            player.gravity = characters[selectedCharacter].gravity;
-            player.jumpPower = characters[selectedCharacter].jumpPower;
-            pipes.length = 0;
-            pipeTimer = 0;
-            score = 0;
-            currentTimeOfDay = 'day';
-            scoreElement.textContent = score;
-            timeOfDayElement.textContent = timeOfDayConfig.day.name;
-        }
-
-        function updatePlayer() {
-            player.velocity += player.gravity;
-            player.y += player.velocity;
-
-            // Update rotation based on velocity
-            player.rotation = Math.min(Math.max(player.velocity * 3, -30), 90);
-
-            // Check boundaries
-            if (player.y + player.height > canvas.height - 50) {
-                gameOver();
-            }
-            if (player.y < 0) {
-                player.y = 0;
-                player.velocity = 0;
-            }
-        }
-
-        function updatePipes() {
-            // Add new pipes
-            pipeTimer++;
-            if (pipeTimer >= pipeInterval) {
-                const minHeight = 100;
-                const maxHeight = canvas.height - pipeGap - minHeight - 50;
-                const topHeight = minHeight + Math.random() * (maxHeight - minHeight);
-                
-                pipes.push({
-                    x: canvas.width,
-                    topHeight: topHeight,
-                    bottomY: topHeight + pipeGap,
-                    passed: false
-                });
-                pipeTimer = 0;
-            }
-
-            // Update pipe positions
-            for (let i = pipes.length - 1; i >= 0; i--) {
-                pipes[i].x -= pipeSpeed;
-
-                // Check if player passed the pipe
-                if (!pipes[i].passed && pipes[i].x + pipeWidth < player.x) {
-                    pipes[i].passed = true;
-                    score++;
-                    scoreElement.textContent = score;
-                    updateTimeOfDay(); // Update time of day when score changes
+                    // Score
+                    if (!pipe.passed && pipe.x + pipe.w < this.player.x) {
+                        pipe.passed = true;
+                        this.score++;
+                        document.getElementById('current-score').textContent = this.score;
+                    }
                 }
 
-                // Remove off-screen pipes
-                if (pipes[i].x + pipeWidth < 0) {
-                    pipes.splice(i, 1);
-                }
-            }
-        }
+                // Update Coins
+                const magnetRadius = User.data.skills.magnet * 50; // 50px per level
 
-        function checkCollisions() {
-            for (const pipe of pipes) {
-                // Check collision with top pipe
-                if (player.x + player.width > pipe.x && 
-                    player.x < pipe.x + pipeWidth &&
-                    player.y < pipe.topHeight) {
-                    gameOver();
-                    return;
-                }
+                for (let i = this.coins.length - 1; i >= 0; i--) {
+                    const coin = this.coins[i];
+                    coin.update();
 
-                // Check collision with bottom pipe
-                if (player.x + player.width > pipe.x && 
-                    player.x < pipe.x + pipeWidth &&
-                    player.y + player.height > pipe.bottomY) {
-                    gameOver();
-                    return;
-                }
-            }
-        }
+                    // Magnet Effect
+                    if (magnetRadius > 0) {
+                        const dx = this.player.x - coin.x;
+                        const dy = this.player.y - coin.y;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        if (dist < magnetRadius + 100) {
+                            coin.x += dx * 0.1;
+                            coin.y += dy * 0.1;
+                        }
+                    }
 
-        function gameOver() {
-            gameState = 'gameOver';
-            if (score > bestScore) {
-                bestScore = score;
-                localStorage.setItem('flappyBestScore', bestScore);
-                bestScoreElement.textContent = `Best: ${bestScore}`;
-            }
-            finalScoreElement.textContent = `Score: ${score}`;
-            gameOverScreen.classList.remove('hidden');
-        }
-
-        function drawBackground() {
-            // Dynamic sky gradient based on time of day
-            const config = timeOfDayConfig[currentTimeOfDay];
-            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, config.skyGradient[0]);
-            gradient.addColorStop(1, config.skyGradient[1]);
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Draw stars for night time
-            if (currentTimeOfDay === 'night') {
-                drawStars();
-            }
-
-            // Draw clouds with time-appropriate colors
-            ctx.fillStyle = config.cloudColor;
-            for (const cloud of clouds) {
-                // Update cloud position
-                cloud.x -= cloud.speed;
-                if (cloud.x + cloud.width < 0) {
-                    cloud.x = canvas.width;
-                    cloud.y = Math.random() * 200;
+                    // Collision
+                    if (coin.collides(this.player)) {
+                        this.coinsCollected++;
+                        // Immediate visual update, but saved at end
+                        document.getElementById('current-coins').textContent = User.data.coins + this.coinsCollected;
+                        this.coins.splice(i, 1);
+                    } else if (coin.offScreen()) {
+                        this.coins.splice(i, 1);
+                    }
                 }
 
-                // Draw cloud
-                ctx.beginPath();
-                ctx.arc(cloud.x, cloud.y, cloud.width / 3, 0, Math.PI * 2);
-                ctx.arc(cloud.x + cloud.width / 3, cloud.y, cloud.width / 2.5, 0, Math.PI * 2);
-                ctx.arc(cloud.x + cloud.width * 2/3, cloud.y, cloud.width / 3, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
+                // Floor Collision
+                if (this.player.y + this.player.radius >= this.height) {
+                    this.gameOver();
+                }
+            },
 
-        function drawStars() {
-            // Generate stars for night sky
-            ctx.fillStyle = 'white';
-            const starPositions = [
-                {x: 50, y: 50}, {x: 150, y: 80}, {x: 250, y: 60}, {x: 350, y: 90},
-                {x: 100, y: 120}, {x: 300, y: 130}, {x: 200, y: 160}, {x: 80, y: 180},
-                {x: 320, y: 200}, {x: 180, y: 40}, {x: 370, y: 150}
-            ];
+            draw() {
+                // Background
+                const bgGradient = Ctx.createLinearGradient(0, 0, 0, this.height);
+                bgGradient.addColorStop(0, '#87CEEB');
+                bgGradient.addColorStop(1, '#E0F7FA');
+                Ctx.fillStyle = bgGradient;
+                Ctx.fillRect(0, 0, this.width, this.height);
+
+                // Draw Clouds (Simple)
+                Ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                Ctx.beginPath();
+                Ctx.arc(100 - (this.frame * 0.5) % (this.width + 200), 100, 30, 0, Math.PI * 2);
+                Ctx.fill();
+
+                this.pipes.forEach(p => p.draw());
+                this.coins.forEach(c => c.draw());
+                this.player.draw();
+            }
+        };
+
+        // --- Entities ---
+        class Player {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.velocity = 0;
+                this.gravity = 0.25;
+                this.jump = -5.5;
+                this.radius = 15;
+
+                // Load Character Stats
+                const charType = CHARACTERS[User.data.selected].type;
+                if (charType === 'dragon') {
+                    this.gravity = 0.2; // lighter
+                    this.radius = 18;
+                }
+            }
             
-            starPositions.forEach(star => {
-                ctx.beginPath();
-                ctx.arc(star.x, star.y, 2, 0, Math.PI * 2);
-                ctx.fill();
+            update() {
+                this.velocity += this.gravity;
+                this.y += this.velocity;
+            }
+
+            draw() {
+                Ctx.save();
+                Ctx.translate(this.x, this.y);
+                const rot = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, (this.velocity * 0.1)));
+                Ctx.rotate(rot);
                 
-                // Add twinkling effect
-                if (Math.random() > 0.7) {
-                    ctx.beginPath();
-                    ctx.arc(star.x, star.y, 3, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-                    ctx.fill();
-                    ctx.fillStyle = 'white';
+                const charData = CHARACTERS[User.data.selected];
+
+                // Body
+                Ctx.fillStyle = charData.color;
+                Ctx.beginPath();
+                Ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                Ctx.fill();
+
+                // Eye
+                Ctx.fillStyle = 'white';
+                Ctx.beginPath();
+                Ctx.arc(6, -6, 5, 0, Math.PI * 2);
+                Ctx.fill();
+                Ctx.fillStyle = 'black';
+                Ctx.beginPath();
+                Ctx.arc(8, -6, 2, 0, Math.PI * 2);
+                Ctx.fill();
+
+                // Wing
+                Ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                Ctx.beginPath();
+                Ctx.ellipse(-5, 5, 8, 5, 0, 0, Math.PI*2);
+                Ctx.fill();
+
+                Ctx.restore();
+            }
+
+            flap() {
+                this.velocity = this.jump;
+            }
+        }
+
+        class Pipe {
+            constructor(canvasWidth) {
+                this.x = canvasWidth;
+                this.w = 60;
+                this.gap = 160;
+                this.speed = 3;
+                this.passed = false;
+
+                // Random position
+                const minH = 50;
+                const maxH = Game.height - minH - this.gap;
+                this.gapY = Math.floor(Math.random() * (maxH - minH + 1) + minH);
+            }
+
+            update() {
+                this.x -= this.speed;
+            }
+
+            draw() {
+                Ctx.fillStyle = '#2ecc71';
+                Ctx.strokeStyle = '#27ae60';
+                Ctx.lineWidth = 3;
+
+                // Top Pipe
+                Ctx.fillRect(this.x, 0, this.w, this.gapY);
+                Ctx.strokeRect(this.x, 0, this.w, this.gapY);
+
+                // Bottom Pipe
+                const bottomY = this.gapY + this.gap;
+                const bottomH = Game.height - bottomY;
+                Ctx.fillRect(this.x, bottomY, this.w, bottomH);
+                Ctx.strokeRect(this.x, bottomY, this.w, bottomH);
+
+                // Caps
+                Ctx.fillStyle = '#27ae60';
+                Ctx.fillRect(this.x - 5, this.gapY - 20, this.w + 10, 20);
+                Ctx.fillRect(this.x - 5, bottomY, this.w + 10, 20);
+            }
+
+            offScreen() {
+                return this.x + this.w < 0;
+            }
+
+            collides(player) {
+                // Simple box collision
+                // Top box
+                if (player.x + player.radius > this.x && player.x - player.radius < this.x + this.w) {
+                    if (player.y - player.radius < this.gapY || player.y + player.radius > this.gapY + this.gap) {
+                        return true;
+                    }
                 }
-            });
-        }
-
-        function drawPlayer() {
-            ctx.save();
-            ctx.translate(player.x + player.width / 2, player.y + player.height / 2);
-            ctx.rotate(player.rotation * Math.PI / 180);
-
-            const colors = characters[player.character].colors;
-
-            if (player.character === 'bird') {
-                drawBird(colors);
-            } else if (player.character === 'dragon') {
-                drawDragon(colors);
-            }
-
-            ctx.restore();
-        }
-
-        function drawBird(colors) {
-            // Bird body
-            ctx.fillStyle = colors.body;
-            ctx.beginPath();
-            ctx.ellipse(0, 0, player.width / 2, player.height / 2, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Bird eye
-            ctx.fillStyle = colors.eye;
-            ctx.beginPath();
-            ctx.arc(8, -5, 6, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.fillStyle = colors.pupil;
-            ctx.beginPath();
-            ctx.arc(10, -5, 3, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Bird beak
-            ctx.fillStyle = colors.beak;
-            ctx.beginPath();
-            ctx.moveTo(15, 0);
-            ctx.lineTo(25, 0);
-            ctx.lineTo(15, 5);
-            ctx.closePath();
-            ctx.fill();
-
-            // Bird wing
-            ctx.fillStyle = colors.wing;
-            ctx.beginPath();
-            ctx.ellipse(-5, 5, 12, 8, -20 * Math.PI / 180, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        function drawDragon(colors) {
-            // Dragon body
-            ctx.fillStyle = colors.body;
-            ctx.beginPath();
-            ctx.ellipse(0, 0, player.width / 2, player.height / 2, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Dragon scales pattern
-            ctx.fillStyle = colors.wing;
-            for (let i = -10; i < 15; i += 6) {
-                for (let j = -8; j < 8; j += 5) {
-                    ctx.beginPath();
-                    ctx.arc(i, j, 1.5, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
-
-            // Dragon eye (golden)
-            ctx.fillStyle = colors.eye;
-            ctx.beginPath();
-            ctx.arc(8, -5, 6, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Dragon pupil (slit-like)
-            ctx.fillStyle = colors.pupil;
-            ctx.beginPath();
-            ctx.ellipse(10, -5, 1, 3, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Dragon snout (more pointed)
-            ctx.fillStyle = colors.beak;
-            ctx.beginPath();
-            ctx.moveTo(15, -2);
-            ctx.lineTo(25, 0);
-            ctx.lineTo(15, 7);
-            ctx.closePath();
-            ctx.fill();
-
-            // Dragon wing (more angular)
-            ctx.fillStyle = colors.wing;
-            ctx.beginPath();
-            ctx.moveTo(-15, 0);
-            ctx.lineTo(-5, -10);
-            ctx.lineTo(5, -8);
-            ctx.lineTo(0, 12);
-            ctx.lineTo(-12, 10);
-            ctx.closePath();
-            ctx.fill();
-
-            // Dragon tail
-            ctx.strokeStyle = colors.body;
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(-17, 0);
-            ctx.quadraticCurveTo(-25, -8, -30, 0);
-            ctx.stroke();
-
-            // Dragon horns
-            ctx.strokeStyle = colors.beak;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(5, -12);
-            ctx.lineTo(7, -18);
-            ctx.moveTo(10, -12);
-            ctx.lineTo(12, -18);
-            ctx.stroke();
-        }
-
-        function drawPipes() {
-            ctx.fillStyle = '#228B22';
-            ctx.strokeStyle = '#006400';
-            ctx.lineWidth = 3;
-
-            for (const pipe of pipes) {
-                // Top pipe
-                ctx.fillRect(pipe.x, 0, pipeWidth, pipe.topHeight);
-                ctx.strokeRect(pipe.x, 0, pipeWidth, pipe.topHeight);
-
-                // Top pipe cap
-                ctx.fillRect(pipe.x - 5, pipe.topHeight - 30, pipeWidth + 10, 30);
-                ctx.strokeRect(pipe.x - 5, pipe.topHeight - 30, pipeWidth + 10, 30);
-
-                // Bottom pipe
-                ctx.fillRect(pipe.x, pipe.bottomY, pipeWidth, canvas.height - pipe.bottomY - 50);
-                ctx.strokeRect(pipe.x, pipe.bottomY, pipeWidth, canvas.height - pipe.bottomY - 50);
-
-                // Bottom pipe cap
-                ctx.fillRect(pipe.x - 5, pipe.bottomY, pipeWidth + 10, 30);
-                ctx.strokeRect(pipe.x - 5, pipe.bottomY, pipeWidth + 10, 30);
+                return false;
             }
         }
 
-        function drawGround() {
-            // Ground
-            ctx.fillStyle = '#8B4513';
-            ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+        class Coin {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 10;
+                this.wobble = Math.random() * Math.PI * 2;
+            }
 
-            // Grass
-            ctx.fillStyle = '#228B22';
-            ctx.fillRect(0, canvas.height - 50, canvas.width, 10);
+            update() {
+                this.x -= 3; // Move with pipes
+                this.wobble += 0.1;
+                this.y += Math.sin(this.wobble) * 0.5;
+            }
+
+            draw() {
+                Ctx.save();
+                Ctx.translate(this.x, this.y);
+                Ctx.scale(Math.sin(this.wobble), 1); // Spinning effect
+
+                Ctx.fillStyle = '#FFD700';
+                Ctx.beginPath();
+                Ctx.arc(0, 0, this.radius, 0, Math.PI*2);
+                Ctx.fill();
+
+                Ctx.strokeStyle = '#f39c12';
+                Ctx.lineWidth = 2;
+                Ctx.stroke();
+
+                Ctx.fillStyle = '#f39c12';
+                Ctx.font = '12px Arial';
+                Ctx.textAlign = 'center';
+                Ctx.textBaseline = 'middle';
+                Ctx.fillText('$', 0, 1);
+
+                Ctx.restore();
+            }
+
+            offScreen() {
+                return this.x + 20 < 0;
+            }
+
+            collides(player) {
+                const dx = this.x - player.x;
+                const dy = this.y - player.y;
+                return Math.sqrt(dx*dx + dy*dy) < (this.radius + player.radius);
+            }
         }
 
-        function gameLoop() {
-            if (gameState !== 'playing') return;
+        // --- Controls ---
+        window.addEventListener('keydown', e => {
+            if (e.code === 'Space') {
+                if (Game.state === 'playing') Game.player.flap();
+            }
+        });
 
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        window.addEventListener('mousedown', () => {
+             if (Game.state === 'playing') Game.player.flap();
+        });
 
-            // Draw everything
-            drawBackground();
-            drawPipes();
-            drawPlayer();
-            drawGround();
+        window.addEventListener('touchstart', (e) => {
+             //e.preventDefault(); // handled by css touch-action
+             if (Game.state === 'playing') Game.player.flap();
+        });
 
-            // Update game state
-            updatePlayer();
-            updatePipes();
-            checkCollisions();
+        window.addEventListener('resize', () => {
+            Game.resize();
+        });
 
-            // Continue game loop
-            requestAnimationFrame(gameLoop);
-        }
+        // Init
+        window.onload = () => {
+            Game.resize();
+        };
 
-        // Initialize
-        updateCharacterDisplay();
-        updateTimeOfDay();
-        drawCharacterPreviews();
-        drawBackground();
-        drawGround();
     </script>
 </body>
 </html>
