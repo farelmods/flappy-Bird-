@@ -54,13 +54,14 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(5px);
+            background: rgba(20, 20, 30, 0.85); /* Darker, more premium bg */
+            backdrop-filter: blur(15px); /* Stronger blur */
             z-index: 10;
             transition: opacity 0.3s ease;
             padding: 20px;
             padding-bottom: env(safe-area-inset-bottom, 20px);
             text-align: center;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.5);
         }
 
         .hidden {
@@ -74,9 +75,10 @@
             font-family: 'Fredoka One', cursive;
             color: #FFD700;
             font-size: 3rem;
-            text-shadow: 4px 4px 0 #d35400, 6px 6px 0 #2c3e50;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.5); /* Softer shadow */
             margin-bottom: 2rem;
             letter-spacing: 2px;
+            filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.5)); /* Glow effect */
             animation: float 3s ease-in-out infinite;
         }
 
@@ -120,24 +122,31 @@
 
         /* Buttons */
         .btn {
-            background: linear-gradient(to bottom, #f1c40f, #f39c12);
-            border: none;
+            background: linear-gradient(135deg, #f1c40f, #f39c12);
+            border: 1px solid rgba(255,255,255,0.2);
             border-radius: 50px;
             padding: 15px 40px;
             color: #fff;
             font-family: 'Fredoka One', cursive;
             font-size: 1.5rem;
             cursor: pointer;
-            text-shadow: 1px 1px 0 rgba(0,0,0,0.2);
-            box-shadow: 0 5px 0 #d35400, 0 10px 10px rgba(0,0,0,0.2);
-            transition: all 0.1s;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            box-shadow: 0 8px 15px rgba(243, 156, 18, 0.4), inset 0 2px 0 rgba(255,255,255,0.2);
+            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
             margin: 10px;
             min-width: 200px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 20px rgba(243, 156, 18, 0.5), inset 0 2px 0 rgba(255,255,255,0.2);
         }
 
         .btn:active {
-            transform: translateY(5px);
-            box-shadow: 0 0 0 #d35400, 0 0px 0 rgba(0,0,0,0.2);
+            transform: translateY(2px);
+            box-shadow: 0 2px 5px rgba(243, 156, 18, 0.4), inset 0 2px 0 rgba(255,255,255,0.1);
         }
 
         .btn-secondary {
@@ -699,7 +708,7 @@
 
             loop() {
                 if (this.state !== 'playing') return;
-                
+
                 this.update();
                 this.draw();
 
@@ -800,18 +809,51 @@
             },
 
             draw() {
-                // Background
+                // Realistic Background
+                // Sky
                 const bgGradient = Ctx.createLinearGradient(0, 0, 0, this.height);
-                bgGradient.addColorStop(0, '#87CEEB');
-                bgGradient.addColorStop(1, '#E0F7FA');
+                bgGradient.addColorStop(0, '#1a73e8'); // Deep blue top
+                bgGradient.addColorStop(1, '#64b5f6'); // Lighter blue bottom
                 Ctx.fillStyle = bgGradient;
                 Ctx.fillRect(0, 0, this.width, this.height);
 
-                // Draw Clouds (Simple)
-                Ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                // Distant Mountains (Parallax Layer 1)
+                const mountOffset = (this.frame * 0.2) % this.width;
+                Ctx.fillStyle = '#1565c0'; // Darker blue mountain
                 Ctx.beginPath();
-                Ctx.arc(100 - (this.frame * 0.5) % (this.width + 200), 100, 30, 0, Math.PI * 2);
+                Ctx.moveTo(0, this.height);
+                for (let i = 0; i <= this.width; i+= 50) {
+                     Ctx.lineTo(i, this.height - 150 - Math.sin((i + mountOffset) * 0.01) * 50);
+                }
+                Ctx.lineTo(this.width, this.height);
                 Ctx.fill();
+
+                // Closer Hills (Parallax Layer 2)
+                const hillOffset = (this.frame * 0.5) % this.width;
+                Ctx.fillStyle = '#2e7d32'; // Forest green
+                Ctx.beginPath();
+                Ctx.moveTo(0, this.height);
+                for (let i = 0; i <= this.width + 100; i+= 50) {
+                     // Scrolling logic
+                     const x = i - hillOffset;
+                     if(x < -50) continue;
+                     Ctx.lineTo(x, this.height - 50 - Math.sin((i) * 0.02) * 30);
+                }
+                Ctx.lineTo(this.width, this.height);
+                Ctx.lineTo(0, this.height);
+                Ctx.fill();
+
+                // Draw Clouds (Improved)
+                Ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                for(let i=0; i<3; i++) {
+                    const cloudX = (this.frame * (0.5 + i*0.1) + i*200) % (this.width + 200) - 100;
+                    const cloudY = 50 + i*40;
+                    Ctx.beginPath();
+                    Ctx.arc(cloudX, cloudY, 30, 0, Math.PI * 2);
+                    Ctx.arc(cloudX + 25, cloudY - 10, 35, 0, Math.PI * 2);
+                    Ctx.arc(cloudX + 50, cloudY, 30, 0, Math.PI * 2);
+                    Ctx.fill();
+                }
 
                 this.pipes.forEach(p => p.draw());
                 this.coins.forEach(c => c.draw());
@@ -836,7 +878,7 @@
                     this.radius = 15;
                 }
             }
-            
+
             update() {
                 this.velocity += this.gravity;
                 this.y += this.velocity;
@@ -847,29 +889,51 @@
                 Ctx.translate(this.x, this.y);
                 const rot = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, (this.velocity * 0.1)));
                 Ctx.rotate(rot);
-                
+
                 const charData = CHARACTERS[User.data.selected];
 
-                // Body
+                // 3D Body Effect (Radial Gradient is cleaner than full lighting in JS)
+                // Main Body
                 Ctx.fillStyle = charData.color;
                 Ctx.beginPath();
                 Ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
                 Ctx.fill();
 
-                // Eye
-                Ctx.fillStyle = 'white';
+                // Glossy Highlight
+                Ctx.fillStyle = 'rgba(255,255,255,0.3)';
                 Ctx.beginPath();
-                Ctx.arc(6, -6, 5, 0, Math.PI * 2);
-                Ctx.fill();
-                Ctx.fillStyle = 'black';
-                Ctx.beginPath();
-                Ctx.arc(8, -6, 2, 0, Math.PI * 2);
+                Ctx.ellipse(-5, -5, this.radius/2, this.radius/3, Math.PI/4, 0, Math.PI*2);
                 Ctx.fill();
 
-                // Wing
-                Ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                // Eye (With depth)
+                Ctx.fillStyle = 'white';
                 Ctx.beginPath();
-                Ctx.ellipse(-5, 5, 8, 5, 0, 0, Math.PI*2);
+                Ctx.arc(6, -6, 6, 0, Math.PI * 2);
+                Ctx.fill();
+
+                Ctx.fillStyle = '#333'; // Pupil
+                Ctx.beginPath();
+                Ctx.arc(8, -6, 2.5, 0, Math.PI * 2);
+                Ctx.fill();
+
+                // Eye reflection
+                Ctx.fillStyle = 'white';
+                Ctx.beginPath();
+                Ctx.arc(7, -7, 1, 0, Math.PI*2);
+                Ctx.fill();
+
+                // Wing (Animated slightly?)
+                Ctx.fillStyle = 'rgba(0,0,0,0.15)';
+                Ctx.beginPath();
+                Ctx.ellipse(-6, 4, 10, 6, -0.2, 0, Math.PI*2);
+                Ctx.fill();
+
+                // Beak/Mouth
+                Ctx.fillStyle = '#f39c12';
+                Ctx.beginPath();
+                Ctx.moveTo(8, 2);
+                Ctx.lineTo(16, 6);
+                Ctx.lineTo(8, 10);
                 Ctx.fill();
 
                 Ctx.restore();
@@ -899,9 +963,16 @@
             }
 
             draw() {
-                Ctx.fillStyle = '#2ecc71';
-                Ctx.strokeStyle = '#27ae60';
-                Ctx.lineWidth = 3;
+                // 3D Pipe Effect
+                const pipeGradient = Ctx.createLinearGradient(this.x, 0, this.x + this.w, 0);
+                pipeGradient.addColorStop(0, '#2e7d32'); // Dark edge
+                pipeGradient.addColorStop(0.2, '#66bb6a'); // Highlight
+                pipeGradient.addColorStop(0.5, '#4caf50'); // Main color
+                pipeGradient.addColorStop(1, '#1b5e20'); // Dark shadow edge
+
+                Ctx.fillStyle = pipeGradient;
+                Ctx.strokeStyle = '#1b5e20';
+                Ctx.lineWidth = 2;
 
                 // Top Pipe
                 Ctx.fillRect(this.x, 0, this.w, this.gapY);
@@ -913,10 +984,25 @@
                 Ctx.fillRect(this.x, bottomY, this.w, bottomH);
                 Ctx.strokeRect(this.x, bottomY, this.w, bottomH);
 
-                // Caps
-                Ctx.fillStyle = '#27ae60';
-                Ctx.fillRect(this.x - 5, this.gapY - 20, this.w + 10, 20);
-                Ctx.fillRect(this.x - 5, bottomY, this.w + 10, 20);
+                // Pipe Caps (Realistic Rim)
+                const capGradient = Ctx.createLinearGradient(this.x - 5, 0, this.x + this.w + 5, 0);
+                capGradient.addColorStop(0, '#2e7d32');
+                capGradient.addColorStop(0.2, '#81c784');
+                capGradient.addColorStop(1, '#1b5e20');
+
+                Ctx.fillStyle = capGradient;
+                // Top Cap
+                Ctx.fillRect(this.x - 5, this.gapY - 25, this.w + 10, 25);
+                Ctx.strokeRect(this.x - 5, this.gapY - 25, this.w + 10, 25);
+
+                // Bottom Cap
+                Ctx.fillRect(this.x - 5, bottomY, this.w + 10, 25);
+                Ctx.strokeRect(this.x - 5, bottomY, this.w + 10, 25);
+
+                // Highlights
+                Ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                Ctx.fillRect(this.x + 10, 0, 10, this.gapY - 25); // Top shine
+                Ctx.fillRect(this.x + 10, bottomY + 25, 10, bottomH - 25); // Bottom shine
             }
 
             offScreen() {
@@ -952,22 +1038,35 @@
             draw() {
                 Ctx.save();
                 Ctx.translate(this.x, this.y);
-                Ctx.scale(Math.sin(this.wobble), 1); // Spinning effect
 
-                Ctx.fillStyle = '#FFD700';
+                // 3D Spin Effect
+                const scaleX = Math.abs(Math.sin(this.wobble));
+                Ctx.scale(scaleX, 1);
+
+                // Gold Gradient
+                const grad = Ctx.createRadialGradient(-2, -2, 1, 0, 0, this.radius);
+                grad.addColorStop(0, '#fff'); // Shine
+                grad.addColorStop(0.3, '#FFD700'); // Gold
+                grad.addColorStop(1, '#B8860B'); // Dark Gold
+
+                Ctx.fillStyle = grad;
                 Ctx.beginPath();
                 Ctx.arc(0, 0, this.radius, 0, Math.PI*2);
                 Ctx.fill();
 
-                Ctx.strokeStyle = '#f39c12';
+                // Outer Ring
+                Ctx.strokeStyle = '#DAA520';
                 Ctx.lineWidth = 2;
                 Ctx.stroke();
 
-                Ctx.fillStyle = '#f39c12';
-                Ctx.font = '12px Arial';
-                Ctx.textAlign = 'center';
-                Ctx.textBaseline = 'middle';
-                Ctx.fillText('$', 0, 1);
+                // Inner Detail ($ sign or Star)
+                if (scaleX > 0.3) { // Hide when edge-on
+                    Ctx.fillStyle = '#B8860B';
+                    Ctx.font = 'bold 14px "Fredoka One"';
+                    Ctx.textAlign = 'center';
+                    Ctx.textBaseline = 'middle';
+                    Ctx.fillText('$', 0, 1);
+                }
 
                 Ctx.restore();
             }
