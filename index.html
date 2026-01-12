@@ -773,15 +773,15 @@
                 this.x = x;
                 this.y = y;
                 this.velocity = 0;
-                this.gravity = 0.25;
-                this.jump = -5.5;
-                this.radius = 15;
+                this.gravity = 0.22;
+                this.jump = -4.5;
+                this.radius = 12;
 
                 // Load Character Stats
                 const charType = CHARACTERS[User.data.selected].type;
                 if (charType === 'dragon') {
-                    this.gravity = 0.2; // lighter
-                    this.radius = 18;
+                    this.gravity = 0.18; // lighter
+                    this.radius = 15;
                 }
             }
             
@@ -832,7 +832,7 @@
             constructor(canvasWidth) {
                 this.x = canvasWidth;
                 this.w = 60;
-                this.gap = 160;
+                this.gap = 190;
                 this.speed = 3;
                 this.passed = false;
 
