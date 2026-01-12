@@ -314,10 +314,13 @@
         <div id="login-screen" class="ui-screen">
             <h1>Flappy Adventure</h1>
             <div class="input-group">
-                <input type="text" id="username-input" placeholder="Masukkan Username" maxlength="10">
+                <input type="text" id="username-input" placeholder="Username" maxlength="10">
             </div>
-            <button class="btn" onclick="Game.login()">MAIN</button>
-            <p style="font-size: 0.8rem; margin-top: 20px; opacity: 0.7;">Progress akan tersimpan otomatis</p>
+            <div class="input-group">
+                <input type="password" id="password-input" placeholder="Password" maxlength="10">
+            </div>
+            <button class="btn" onclick="Game.login()">MAIN / DAFTAR</button>
+            <p style="font-size: 0.8rem; margin-top: 20px; opacity: 0.7;">Akun baru akan dibuat otomatis jika belum ada.<br>Jangan lupa password anda!</p>
         </div>
 
         <!-- Main Menu -->
@@ -387,32 +390,66 @@
 
         const User = {
             username: null,
+            password: null,
             data: null,
 
-            login(username) {
-                if (!username) return alert("Masukkan username!");
-                this.username = username;
-                const saved = localStorage.getItem(`fb_game_${username}`);
-                if (saved) {
-                    this.data = JSON.parse(saved);
-                    // Migration for old data structure if needed
-                    if (!this.data.skills) this.data.skills = { magnet: 0 };
-                } else {
-                    this.data = {
-                        coins: 0,
-                        highScore: 0,
-                        unlocked: ['bird'],
-                        selected: 'bird',
-                        skills: { magnet: 0 }
-                    };
+            login(username, password) {
+                if (!username || !password) return alert("Masukkan username dan password!");
+
+                const savedString = localStorage.getItem(`fb_game_${username}`);
+                let account = null;
+
+                if (savedString) {
+                    // Try to parse existing account
+                    try {
+                        account = JSON.parse(savedString);
+
+                        // Legacy support (if old data didn't have password field)
+                        if (!account.password) {
+                            account.password = password; // Claim this account
+                        } else if (account.password !== password) {
+                            alert("Password salah!");
+                            return false;
+                        }
+                    } catch (e) {
+                        console.error("Data corrupt, resetting");
+                        account = null;
+                    }
                 }
+
+                if (!account) {
+                    // Create New Account
+                    account = {
+                        password: password,
+                        data: {
+                            coins: 0,
+                            highScore: 0,
+                            unlocked: ['bird'],
+                            selected: 'bird',
+                            skills: { magnet: 0 }
+                        }
+                    };
+                    alert("Akun baru dibuat!");
+                }
+
+                this.username = username;
+                this.password = password;
+                this.data = account.data;
+
+                // Ensure data integrity
+                if (!this.data.skills) this.data.skills = { magnet: 0 };
+
                 this.save();
                 return true;
             },
 
             save() {
-                if (this.username) {
-                    localStorage.setItem(`fb_game_${this.username}`, JSON.stringify(this.data));
+                if (this.username && this.data) {
+                    const payload = {
+                        password: this.password,
+                        data: this.data
+                    };
+                    localStorage.setItem(`fb_game_${this.username}`, JSON.stringify(payload));
                 }
             },
 
@@ -519,11 +556,19 @@
                         el.classList.add('locked-overlay');
                     }
 
-                    el.innerHTML = `
-                        ${cvs.outerHTML}
-                        <div class="item-name">${char.name}</div>
-                        <div class="item-cost">${isUnlocked ? (isSelected ? 'EQUIPPED' : 'OWNED') : `🪙 ${char.price}`}</div>
-                    `;
+                    // Create text elements
+                    const nameEl = document.createElement('div');
+                    nameEl.className = 'item-name';
+                    nameEl.textContent = char.name;
+
+                    const costEl = document.createElement('div');
+                    costEl.className = 'item-cost';
+                    costEl.textContent = isUnlocked ? (isSelected ? 'EQUIPPED' : 'OWNED') : `🪙 ${char.price}`;
+
+                    // Append everything
+                    el.appendChild(cvs);
+                    el.appendChild(nameEl);
+                    el.appendChild(costEl);
 
                     list.appendChild(el);
                 });
@@ -601,15 +646,18 @@
 
             login() {
                 const username = document.getElementById('username-input').value.trim();
-                if (User.login(username)) {
+                const password = document.getElementById('password-input').value.trim();
+                if (User.login(username, password)) {
                     UI.showMenu();
                 }
             },
 
             logout() {
                 User.username = null;
+                User.data = null;
                 UI.show('login-screen');
                 document.getElementById('username-input').value = '';
+                document.getElementById('password-input').value = '';
             },
 
             start() {
@@ -836,9 +884,9 @@
                 this.speed = 3;
                 this.passed = false;
 
-                // Random position
-                const minH = 50;
-                const maxH = Game.height - minH - this.gap;
+                // Random position centered around middle of screen
+                const minH = Game.height * 0.2; // 20% from top
+                const maxH = Game.height * 0.8 - this.gap; // 20% from bottom
                 this.gapY = Math.floor(Math.random() * (maxH - minH + 1) + minH);
             }
 
