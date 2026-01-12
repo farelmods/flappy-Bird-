@@ -55,7 +55,7 @@
             justify-content: center;
             align-items: center;
             background: rgba(20, 20, 30, 0.85); /* Darker, more premium bg */
-            backdrop-filter: blur(15px); /* Stronger blur */
+            backdrop-filter: blur(5px); /* Stronger blur */
             z-index: 10;
             transition: opacity 0.5s ease-in-out;
             padding: 20px;
@@ -461,6 +461,8 @@
             shake: 0,
 
             add(x, y, type, count = 5) {
+                // Optimization: Limit max particles
+                if (this.particles.length > 50) return;
                 for(let i=0; i<count; i++) {
                     this.particles.push(new Particle(x, y, type));
                 }
@@ -484,6 +486,100 @@
 
             draw(ctx) {
                 this.particles.forEach(p => p.draw(ctx));
+            }
+        };
+
+        // --- Asset Caching for Performance ---
+        const AssetCache = {
+            backgrounds: {},
+            pipes: {},
+            mountains: null,
+            init(width, height) {
+                // Cache Pipe
+                this.cachePipe();
+                // Cache Mountains
+                this.cacheMountains(width, height);
+            },
+
+            cachePipe() {
+                const w = 60;
+                const h = 400; // Arbitrary tall height
+
+                // Main Pipe Canvas
+                const cvs = document.createElement('canvas');
+                cvs.width = w;
+                cvs.height = h;
+                const ctx = cvs.getContext('2d');
+
+                // 3D Gradient
+                const pipeGradient = ctx.createLinearGradient(0, 0, w, 0);
+                pipeGradient.addColorStop(0, '#2e7d32');
+                pipeGradient.addColorStop(0.2, '#66bb6a');
+                pipeGradient.addColorStop(0.5, '#4caf50');
+                pipeGradient.addColorStop(1, '#1b5e20');
+
+                ctx.fillStyle = pipeGradient;
+                ctx.strokeStyle = '#1b5e20';
+                ctx.lineWidth = 2;
+                ctx.fillRect(0, 0, w, h);
+                ctx.strokeRect(0, 0, w, h);
+
+                // Highlight
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.fillRect(10, 0, 10, h);
+
+                this.pipes.body = cvs;
+
+                // Cap Canvas
+                const capCvs = document.createElement('canvas');
+                capCvs.width = w + 10;
+                capCvs.height = 25;
+                const capCtx = capCvs.getContext('2d');
+
+                const capGradient = capCtx.createLinearGradient(0, 0, w + 10, 0);
+                capGradient.addColorStop(0, '#2e7d32');
+                capGradient.addColorStop(0.2, '#81c784');
+                capGradient.addColorStop(1, '#1b5e20');
+
+                capCtx.fillStyle = capGradient;
+                capCtx.fillRect(0, 0, w+10, 25);
+                capCtx.strokeRect(0, 0, w+10, 25);
+                capCtx.fillStyle = 'rgba(255,255,255,0.3)';
+                capCtx.fillRect(15, 0, 10, 25);
+
+                this.pipes.cap = capCvs;
+            },
+
+            cacheMountains(width, height) {
+                // Wide canvas for scrolling
+                const w = width * 2;
+                const cvs = document.createElement('canvas');
+                cvs.width = w;
+                cvs.height = height;
+                const ctx = cvs.getContext('2d');
+
+                // Distant
+                ctx.fillStyle = '#1565c0';
+                ctx.beginPath();
+                ctx.moveTo(0, height);
+                for (let i = 0; i <= w; i+= 50) {
+                     ctx.lineTo(i, height - 150 - Math.sin(i * 0.01) * 50);
+                }
+                ctx.lineTo(w, height);
+                ctx.fill();
+
+                // Hills
+                ctx.fillStyle = '#2e7d32';
+                ctx.beginPath();
+                ctx.moveTo(0, height);
+                for (let i = 0; i <= w; i+= 50) {
+                     ctx.lineTo(i, height - 50 - Math.sin(i * 0.02) * 30);
+                }
+                ctx.lineTo(w, height);
+                ctx.lineTo(0, height);
+                ctx.fill();
+
+                this.mountains = cvs;
             }
         };
 
@@ -741,6 +837,9 @@
 
             Ctx.scale(dpr, dpr);
 
+            // Re-init cache on resize
+            AssetCache.init(width * dpr, height * dpr);
+
             return { width, height };
         }
 
@@ -925,77 +1024,39 @@
                 Ctx.translate(shakeX, shakeY);
 
                 // Realistic Background
-                // Dynamic Day/Night Cycle (3000 frames cycle)
-                const cycle = (this.frame % 3000) / 3000;
-                let skyTop, skyBot;
-
-                // Interpolate colors (Simplified Day/Night)
-                if (cycle < 0.5) { // Day
-                    skyTop = '#1a73e8'; skyBot = '#64b5f6';
-                } else { // Night
-                    skyTop = '#0d1b2a'; skyBot = '#1b263b';
-                }
-
+                // Sky (Draw every frame is fine, gradients are fast)
                 const bgGradient = Ctx.createLinearGradient(0, 0, 0, this.height);
-                bgGradient.addColorStop(0, skyTop);
-                bgGradient.addColorStop(1, skyBot);
+                bgGradient.addColorStop(0, '#1a73e8');
+                bgGradient.addColorStop(1, '#64b5f6');
                 Ctx.fillStyle = bgGradient;
                 Ctx.fillRect(0, 0, this.width, this.height);
 
-                // Sun/Moon
-                const celestialX = (cycle * this.width * 1.5) - (this.width * 0.25);
-                const celestialY = Math.sin(cycle * Math.PI) * 100 + 50;
-                Ctx.fillStyle = cycle < 0.5 ? '#FDB813' : '#F4F6F0';
-                Ctx.shadowBlur = 20;
-                Ctx.shadowColor = cycle < 0.5 ? 'orange' : 'white';
+                // Sun (Simple)
+                Ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
                 Ctx.beginPath();
-                Ctx.arc(celestialX, 100, 30, 0, Math.PI*2);
-                Ctx.fill();
-                Ctx.shadowBlur = 0;
-
-                // Distant Mountains (Parallax Layer 1)
-                const mountOffset = (this.frame * 0.2) % this.width;
-                Ctx.fillStyle = cycle < 0.5 ? '#1565c0' : '#0a192f'; // Darker at night
-                Ctx.beginPath();
-                Ctx.moveTo(0, this.height);
-                for (let i = 0; i <= this.width; i+= 50) {
-                     Ctx.lineTo(i, this.height - 150 - Math.sin((i + mountOffset) * 0.01) * 50);
-                }
-                Ctx.lineTo(this.width, this.height);
+                Ctx.arc(this.width * 0.8, 80, 40, 0, Math.PI*2);
                 Ctx.fill();
 
-                // Closer Hills (Parallax Layer 2)
-                const hillOffset = (this.frame * 0.5) % this.width;
-                Ctx.fillStyle = cycle < 0.5 ? '#2e7d32' : '#143625';
-                Ctx.beginPath();
-                Ctx.moveTo(0, this.height);
-                for (let i = 0; i <= this.width + 100; i+= 50) {
-                     // Scrolling logic
-                     const x = i - hillOffset;
-                     if(x < -50) continue;
-                     Ctx.lineTo(x, this.height - 50 - Math.sin((i) * 0.02) * 30);
-                }
-                Ctx.lineTo(this.width, this.height);
-                Ctx.lineTo(0, this.height);
-                Ctx.fill();
+                // Mountains (Cached)
+                if (AssetCache.mountains) {
+                    const offset = (this.frame * 0.2) % (this.width);
+                    // Draw twice for seamless scroll
+                    // Source: cached image
+                    // Destination: Scrolling logic
+                    const mWidth = AssetCache.mountains.width;
+                    const mHeight = AssetCache.mountains.height;
 
-                // Draw Clouds (Improved)
-                Ctx.fillStyle = 'rgba(255,255,255,0.4)';
-                for(let i=0; i<3; i++) {
-                    const cloudX = (this.frame * (0.5 + i*0.1) + i*200) % (this.width + 200) - 100;
-                    const cloudY = 50 + i*40;
-                    Ctx.beginPath();
-                    Ctx.arc(cloudX, cloudY, 30, 0, Math.PI * 2);
-                    Ctx.arc(cloudX + 25, cloudY - 10, 35, 0, Math.PI * 2);
-                    Ctx.arc(cloudX + 50, cloudY, 30, 0, Math.PI * 2);
-                    Ctx.fill();
+                    // Simple infinite scroll calculation
+                    const scrollX = (this.frame * 0.5) % this.width;
+
+                    Ctx.drawImage(AssetCache.mountains, -scrollX, 0, mWidth, mHeight);
+                    Ctx.drawImage(AssetCache.mountains, -scrollX + mWidth/2, 0, mWidth, mHeight);
                 }
 
                 this.pipes.forEach(p => p.draw());
                 this.coins.forEach(c => c.draw());
-                FX.draw(Ctx); // Particles behind player? No, top
                 this.player.draw();
-                FX.draw(Ctx); // Particles on top
+                FX.draw(Ctx);
 
                 Ctx.restore();
             }
@@ -1032,7 +1093,6 @@
 
                 const charData = CHARACTERS[User.data.selected];
 
-                // 3D Body Effect (Radial Gradient is cleaner than full lighting in JS)
                 // Main Body
                 Ctx.fillStyle = charData.color;
                 Ctx.beginPath();
@@ -1056,24 +1116,10 @@
                 Ctx.arc(8, -6, 2.5, 0, Math.PI * 2);
                 Ctx.fill();
 
-                // Eye reflection
-                Ctx.fillStyle = 'white';
-                Ctx.beginPath();
-                Ctx.arc(7, -7, 1, 0, Math.PI*2);
-                Ctx.fill();
-
-                // Wing (Animated slightly?)
+                // Wing
                 Ctx.fillStyle = 'rgba(0,0,0,0.15)';
                 Ctx.beginPath();
                 Ctx.ellipse(-6, 4, 10, 6, -0.2, 0, Math.PI*2);
-                Ctx.fill();
-
-                // Beak/Mouth
-                Ctx.fillStyle = '#f39c12';
-                Ctx.beginPath();
-                Ctx.moveTo(8, 2);
-                Ctx.lineTo(16, 6);
-                Ctx.lineTo(8, 10);
                 Ctx.fill();
 
                 Ctx.restore();
@@ -1104,46 +1150,23 @@
             }
 
             draw() {
-                // 3D Pipe Effect
-                const pipeGradient = Ctx.createLinearGradient(this.x, 0, this.x + this.w, 0);
-                pipeGradient.addColorStop(0, '#2e7d32'); // Dark edge
-                pipeGradient.addColorStop(0.2, '#66bb6a'); // Highlight
-                pipeGradient.addColorStop(0.5, '#4caf50'); // Main color
-                pipeGradient.addColorStop(1, '#1b5e20'); // Dark shadow edge
+                if (AssetCache.pipes.body) {
+                    // Top Pipe
+                    Ctx.drawImage(AssetCache.pipes.body, 0, 0, this.w, this.gapY, this.x, 0, this.w, this.gapY);
+                    // Top Cap
+                    Ctx.drawImage(AssetCache.pipes.cap, this.x - 5, this.gapY - 25);
 
-                Ctx.fillStyle = pipeGradient;
-                Ctx.strokeStyle = '#1b5e20';
-                Ctx.lineWidth = 2;
-
-                // Top Pipe
-                Ctx.fillRect(this.x, 0, this.w, this.gapY);
-                Ctx.strokeRect(this.x, 0, this.w, this.gapY);
-
-                // Bottom Pipe
-                const bottomY = this.gapY + this.gap;
-                const bottomH = Game.height - bottomY;
-                Ctx.fillRect(this.x, bottomY, this.w, bottomH);
-                Ctx.strokeRect(this.x, bottomY, this.w, bottomH);
-
-                // Pipe Caps (Realistic Rim)
-                const capGradient = Ctx.createLinearGradient(this.x - 5, 0, this.x + this.w + 5, 0);
-                capGradient.addColorStop(0, '#2e7d32');
-                capGradient.addColorStop(0.2, '#81c784');
-                capGradient.addColorStop(1, '#1b5e20');
-
-                Ctx.fillStyle = capGradient;
-                // Top Cap
-                Ctx.fillRect(this.x - 5, this.gapY - 25, this.w + 10, 25);
-                Ctx.strokeRect(this.x - 5, this.gapY - 25, this.w + 10, 25);
-
-                // Bottom Cap
-                Ctx.fillRect(this.x - 5, bottomY, this.w + 10, 25);
-                Ctx.strokeRect(this.x - 5, bottomY, this.w + 10, 25);
-
-                // Highlights
-                Ctx.fillStyle = 'rgba(255,255,255,0.3)';
-                Ctx.fillRect(this.x + 10, 0, 10, this.gapY - 25); // Top shine
-                Ctx.fillRect(this.x + 10, bottomY + 25, 10, bottomH - 25); // Bottom shine
+                    // Bottom Pipe
+                    const bottomY = this.gapY + this.gap;
+                    const bottomH = Game.height - bottomY;
+                    Ctx.drawImage(AssetCache.pipes.body, 0, 0, this.w, bottomH, this.x, bottomY, this.w, bottomH);
+                    // Bottom Cap
+                    Ctx.drawImage(AssetCache.pipes.cap, this.x - 5, bottomY);
+                } else {
+                    // Fallback
+                    Ctx.fillStyle = '#2e7d32';
+                    Ctx.fillRect(this.x, 0, this.w, this.gapY);
+                }
             }
 
             offScreen() {
@@ -1199,15 +1222,6 @@
                 Ctx.strokeStyle = '#DAA520';
                 Ctx.lineWidth = 2;
                 Ctx.stroke();
-
-                // Inner Detail ($ sign or Star)
-                if (scaleX > 0.3) { // Hide when edge-on
-                    Ctx.fillStyle = '#B8860B';
-                    Ctx.font = 'bold 14px "Fredoka One"';
-                    Ctx.textAlign = 'center';
-                    Ctx.textBaseline = 'middle';
-                    Ctx.fillText('$', 0, 1);
-                }
 
                 Ctx.restore();
             }
